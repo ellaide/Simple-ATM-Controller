@@ -86,8 +86,11 @@ def enoughBalance(accountId, val):
 def getBalance(accountId):
     return balances[accountId]
 
+# In the deposit() and withdraw() functions, we can integrate with ATM cash bin. For deposit, we need to line which adds money to ATM cash bin
+# For withdrawal, we need to first check if there are enough funds in the cash bin, if there are, then check
+# if user's balance can be updated successfully. If yes, then give out the cash and decrement ATM cash bin value
 def deposit(accountId, val):
-    # Use locks to prevent races. Try commenting our lines with locks and run python tests.py. It shouldn't pass concurrency test
+    # Use locks to prevent races. Try commenting our lines with locks and run python3 tests.py. It shouldn't pass concurrency test
     locks[accountId].acquire()    
     balances[accountId] += val
     # Save the data to persistent storage
