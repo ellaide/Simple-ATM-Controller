@@ -1,60 +1,77 @@
-import sys, threading
-import bank.py
-import atm.py
+import sys, threading, json
 
-# Key is card number, value is account id
-accounts = {"0000": 0, "1111": 1, "2222": 0}
-balances = {0: 2000, 1: 1000}
+
+# Key is card number, value is account id. There are cases where two cards are linked to the same account
+accounts = {0000: 0, 1111: 1, 2222: 0}
+
 # Key is card number, value is card PIN Number
-passwords = {"0000": 1234, "1111": 7888, "2222": 1234}
+passwords = {0000: 1234, 1111: 7888, 2222: 4321}
 
-# Create mutex locks with keys account ids and values corresponding locks. This is to prevent concurrency issues with user
-# being able to do operations from different ATMs.
+# Create mutex locks with keys as account ids and values as corresponding locks. This is to prevent concurrency issues with user
+# being able to do operations from different ATMs and same account
 locks = {0: threading.Lock(), 1: threading.Lock()}
 
+# Balances are stored in the JSON file. In reality, this should be database (SQL)
+strBalances = json.load(open("balances.json"))
+balances = {}
+
+# Trivial implementation to check card validity
 def checkCardIntegrity(isValid):
     return isValid
 
-# This function executes after the card is inserted
 def main():
-    if not checkCardIntegrity(sys.argv[1]):
-        raise ValueError("Card is bad")
-    cardNumber = sys.argv[2]
-    inputPIN = sys.argv[3]
-    ATMId = sys.argv[4]
-    if (not bank.checkPIN(cardNumber, inputPIN)):
-        raise ValueError("Wrong PIN")
-
-    accountId = bank.getAccountId(cardNumber)
-
-    locks[accountId].acquire()
-
-    operation = sys.argv[5]
-
-    if operation == "Balance":
-        print(balances[accountId])
-    elif operation == "Deposit":
-        amount = sys.argv[6]
-        if atm.depositCash(ATMId, amount):
-            deposit(accountId, amount)
-        else:
-            locks[accountId].release()
-            raise ValueError("Something went wrong")
-    elif operation == "Withdrawal":
-        amount = sys.argv[6]
-        if not enoughBalance(accountId, amount):
-            locks[accountId].release()
-            raise ValueError("Not enough money in the account balance")
-        try atm.withdrawCash(ATMId, amount):
-            withdraw(accountId, amount)
-        except ValueError(err):
-            locks[accountId].release()
-            raise ValueError(err)
+    # Read from JSON file to balances with correct format
+    readFromJSON()
     
-    locks[accountId].release()
+    print("Insert your card")
+    # For simplicity, Type T as input if card is valid. If you type anything else, checkCardIntegrity will result in False
+    validity = input()
+    if not checkCardIntegrity(validity == "T"):
+        print("Card is bad")
+        return
+
+    # In real system, we don't ask this, since ATM card reader will give us this information. Please take a look at the 
+    # passwords dict to check card number and PIN correspondence
+    print("Input your card number: ", end = '')
+    cardNumber = int(input())
+
+    # I didn't hide PIN since I don't think it's essential for this task
+    print("Type PIN: ", end = '')
+    inputPIN = int(input())
+    if not checkPIN(cardNumber, inputPIN):
+        print("Wrong PIN")
+        return
+
+    # There are cases when two cards are linked to the same account.
+    accountId = getAccountId(cardNumber)
+
+    # This is an infinite loop. It will break when user types 4
+    while True:
+        print("Choose operation: 1 - Balance, 2 - Deposit, 3 - Withdraw, 4 - Exit")
+        operation = int(input())
+        if operation == 1:
+            print("Current Balance is", getBalance(accountId))
+        elif operation == 2:
+            print("Input amount in USD: ", end = '')
+            amount = int(input())
+            if not deposit(accountId, amount):
+                print("Something went wrong")
+                return
+            print("Current Balance is", getBalance(accountId))
+        elif operation == 3:
+            print("Input amount in USD: ", end = '')
+            amount = int(input())
+            if not withdraw(accountId, amount):
+                print("Not enough funds")
+            else:
+                print("Current Balance is", getBalance(accountId))
+        elif operation == 4:
+            break
 
 
-
+def readFromJSON():
+    for key in strBalances:
+        balances[int(key)] = int(strBalances[key])
 
 # Method for checking correctness of user input PIN
 def checkPIN(cardNumber, inputPIN):
@@ -66,8 +83,34 @@ def getAccountId(cardNumber):
 def enoughBalance(accountId, val):
     return balances[accountId] >= val
 
+def getBalance(accountId):
+    return balances[accountId]
+
 def deposit(accountId, val):
+    # Use locks to prevent races. Try commenting our lines with locks and run python tests.py. It shouldn't pass concurrency test
+    locks[accountId].acquire()    
     balances[accountId] += val
+    # Save the data to persistent storage
+    saveToBalances()
+    success = True
+    locks[accountId].release()
+    return success
 
 def withdraw(accountId, val):
-    balances[accountId] -= val
+    # Use locks to prevent races
+    locks[accountId].acquire()
+    success = False
+    if (enoughBalance(accountId, val)):
+        balances[accountId] -= val
+        # Save the data to persistent storage
+        saveToBalances()
+        success = True
+    locks[accountId].release()
+    return success
+
+def saveToBalances():
+    with open("balances.json", 'w') as json_file:
+        json.dump(balances, json_file)
+
+if __name__ == "__main__":
+    main()
