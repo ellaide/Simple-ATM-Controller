@@ -44,34 +44,51 @@ def main():
 
     # There are cases when two cards are linked to the same account.
     accountId = getAccountId(cardNumber)
-
+    
+    print("Choose account: ")
+    for account in balances[accountId]:
+        print(account, end=" ")
+    print("")
+    accountType = input()
+    found = False
+    for account in balances[accountId]:
+        if accountType == account:
+            found = True
+            break
+    if not found:
+        print("Account name", accountType, "does not exist")
+        return
     # This is an infinite loop. It will break when user types 4
+
     while True:
         print("Choose operation: 1 - Balance, 2 - Deposit, 3 - Withdraw, 4 - Exit")
         operation = int(input())
         if operation == 1:
-            print("Current Balance is", getBalance(accountId))
+            print("Current Balance is", getBalance(accountId, accountType))
         elif operation == 2:
             print("Input amount in USD: ", end = '')
             amount = int(input())
-            if not deposit(accountId, amount):
+            if not deposit(accountId, accountType, amount):
                 print("Something went wrong")
                 return
-            print("Current Balance is", getBalance(accountId))
+            print("Current Balance is", getBalance(accountId, accountType))
         elif operation == 3:
             print("Input amount in USD: ", end = '')
             amount = int(input())
-            if not withdraw(accountId, amount):
+            if not withdraw(accountId, accountType, amount):
                 print("Not enough funds")
             else:
-                print("Current Balance is", getBalance(accountId))
+                print("Current Balance is", getBalance(accountId, accountType))
         elif operation == 4:
             break
 
 
 def readFromJSON():
     for key in strBalances:
-        balances[int(key)] = int(strBalances[key])
+        accounts = {}
+        for acc in strBalances[key]:
+            accounts[acc] = int(strBalances[key][acc])
+        balances[int(key)] = accounts
 
 # Method for checking correctness of user input PIN
 def checkPIN(cardNumber, inputPIN):
@@ -80,31 +97,31 @@ def checkPIN(cardNumber, inputPIN):
 
 def getAccountId(cardNumber):
     return accounts[cardNumber]
-def enoughBalance(accountId, val):
-    return balances[accountId] >= val
+def enoughBalance(accountId, accountType, val):
+    return balances[accountId][accountType] >= val
 
-def getBalance(accountId):
-    return balances[accountId]
+def getBalance(accountId, accountType):
+    return balances[accountId][accountType]
 
 # In the deposit() and withdraw() functions, we can integrate with ATM cash bin. For deposit, we need to line which adds money to ATM cash bin
 # For withdrawal, we need to first check if there are enough funds in the cash bin, if there are, then check
 # if user's balance can be updated successfully. If yes, then give out the cash and decrement ATM cash bin value
-def deposit(accountId, val):
+def deposit(accountId, accountType, val):
     # Use locks to prevent races. Try commenting our lines with locks and run python3 tests.py. It shouldn't pass concurrency test
     locks[accountId].acquire()    
-    balances[accountId] += val
+    balances[accountId][accountType] += val
     # Save the data to persistent storage
     saveToBalances()
     success = True
     locks[accountId].release()
     return success
 
-def withdraw(accountId, val):
+def withdraw(accountId, accountType, val):
     # Use locks to prevent races
     locks[accountId].acquire()
     success = False
-    if (enoughBalance(accountId, val)):
-        balances[accountId] -= val
+    if (enoughBalance(accountId, accountType, val)):
+        balances[accountId][accountType] -= val
         # Save the data to persistent storage
         saveToBalances()
         success = True
