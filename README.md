@@ -7,9 +7,10 @@ After cloning the repository, open your terminal and run "python3 controller.py"
 1. Terminal will ask you to insert your card. You have to type T to proceed further. Any other input will result in "Card is bad" output
 2. Then it will ask for card number. You can type either 0000, 1111 or 2222.
 3. For PIN number, input corresponding PIN: {0000: 1234, 1111: 7888, 2222: 4321}
-4. Then choose operation. You have to type number from 1 to 4 depending on what you want. Options will be shown in the terminal window
-5. For depositing and withdrawal, you will be asked to input amount
-6. You can exit by typing 4 or pressing Ctrl-C
+4. Select account type from the given options. For instance, type Personal. If typed incorrectly, script will exit.
+5. Then choose operation. You have to type number from 1 to 4 depending on what you want. Options will be shown in the terminal window
+6. For depositing and withdrawal, you will be asked to input amount
+7. You can exit by typing 4 or pressing Ctrl-C
 
 
 To run tests, open your terminal window and run "python3 tests.py" command. I used unittest for tests. 
